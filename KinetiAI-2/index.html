@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinetiAI — Neuromorphic Rehab Monitor</title>
+    <link rel="stylesheet" href="style2.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <header>
+        <h1>KINETI<span style="color:#b55cff">AI</span> — NEUROMORPHIC REHAB</h1>
+        <p>Spiking Neural Network · Event-Driven Intelligence · Post-Op Recovery</p>
+        <a href="doctor.html" target="_blank" style="color: #ff6b00; font-family: monospace; font-size: 0.8rem; text-decoration: none; border: 1px solid #ff6b00; padding: 6px 12px; border-radius: 4px; margin-top: 12px; display: inline-block; transition: background 0.2s, color 0.2s;" onmouseover="this.style.background='#ff6b00'; this.style.color='#000';" onmouseout="this.style.background='transparent'; this.style.color='#ff6b00';">➔ OPEN CLINICIAN PORTAL</a>
+    </header>
+
+    <main class="container">
+        <section class="video-box">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="output_canvas" width="640" height="480"></canvas>
+            <!-- Spike visualiser overlay -->
+            <canvas id="spike_canvas" width="640" height="80"></canvas>
+        </section>
+
+        <section class="dashboard">
+            <!-- Master Session Controller -->
+            <div class="session-control-panel" style="margin-bottom: 15px;">
+                <button id="btn-session-control" class="session-control-btn active-start">▶️ Start Session Tracking</button>
+            </div>
+
+            <div class="metric-section">
+                <h3>Live Analytics</h3>
+
+                <!-- Camera AI Telemetry Block -->
+                <div class="telemetry-block" id="telemetry-camera">
+                    <div class="telemetry-title">📷 Camera AI Tracking</div>
+                    <div class="metric-grid">
+                        <div class="metric-subbox">
+                            <span class="metric-lbl">Knee Angle</span>
+                            <span id="angle-display" class="metric-val">--°</span>
+                        </div>
+                        <div class="metric-subbox" style="border-left-color: #10b981;">
+                            <span class="metric-lbl">Reps Completed</span>
+                            <span id="rep-display" class="metric-val" style="color: #10b981;">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SNN Neuromorphic Engine Block -->
+                <div class="telemetry-block" id="telemetry-snn">
+                    <div class="telemetry-title">⚡ SNN Spike Engine</div>
+                    <div class="metric-grid">
+                        <div class="metric-subbox" style="border-left-color: #b55cff;">
+                            <span class="metric-lbl">Membrane V</span>
+                            <span id="snn-voltage-display" class="metric-val" style="color: #b55cff;">0.00</span>
+                        </div>
+                        <div class="metric-subbox" style="border-left-color: #00cfff;">
+                            <span class="metric-lbl">SNN Reps</span>
+                            <span id="snn-rep-display" class="metric-val" style="color: #00cfff;">0</span>
+                        </div>
+                    </div>
+                    <div class="snn-status-row">
+                        <span class="snn-label">PHASE</span>
+                        <span id="snn-phase-display" class="snn-phase-badge phase-idle">IDLE</span>
+                        <span class="snn-label" style="margin-left:12px;">SPIKES</span>
+                        <span id="snn-spike-count" class="snn-spike-val">0</span>
+                        <span class="snn-label" style="margin-left:12px;">LAST</span>
+                        <span id="snn-last-spike" class="snn-spike-val">—</span>
+                    </div>
+                </div>
+
+                <!-- M5Stick Hardware Telemetry Block -->
+                <div class="telemetry-block" id="telemetry-sensor">
+                    <div class="telemetry-title">🔌 M5Stick Hardware Sensor</div>
+                    <div class="metric-grid">
+                        <div class="metric-subbox" style="border-left-color: #ffd600;">
+                            <span class="metric-lbl">Knee Angle</span>
+                            <span id="sensor-angle-display" class="metric-val" style="color: #ffd600;">--°</span>
+                        </div>
+                        <div class="metric-subbox" style="border-left-color: #b55cff;">
+                            <span class="metric-lbl">Reps Completed</span>
+                            <span id="sensor-rep-display" class="metric-val" style="color: #b55cff;">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tracking-source-section">
+                <h3>Sensor Connectivity</h3>
+                <div id="sensor-controls" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <button id="btn-ble-connect" class="sensor-connect-btn">📶 Connect Wireless (Bluetooth)</button>
+                    <button id="btn-usb-connect" class="sensor-connect-btn">🔌 Connect Wired (USB Serial)</button>
+                    <button id="btn-calibrate-180" class="sensor-connect-btn" style="background-color: #ffd600 !important; color: #000000 !important; display: none;">🎯 Calibrate Straight (180°)</button>
+                    <div id="sensor-status" class="sensor-status-indicator">
+                        <span class="status-dot disconnected"></span>
+                        <span id="sensor-status-text">Status: Disconnected</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ai-section">
+                <h3>AI Consultation</h3>
+                <button id="talk-btn">Tap to Ask Gemini</button>
+                <div id="status" class="status-text">Initializing System...</div>
+            </div>
+        </section>
+    </main>
+
+    <div id="clinical-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modal-title">Pre-Screening Metrics</h2>
+            <p id="modal-description">Please log your current physiological status before beginning:</p>
+            <hr class="modal-divider">
+            <form id="clinical-form">
+                <div id="modal-inputs-container"></div>
+                <button type="submit" id="modal-submit-btn">Initialize Session</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="app2.js"></script>
+</body>
+</html>

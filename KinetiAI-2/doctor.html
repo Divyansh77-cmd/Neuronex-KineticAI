@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard — Rehab Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --orange: #FF6B00;
+            --green: #00FF88;
+            --blue: #4488FF;
+            --red: #FF4444;
+            --yellow: #FFD600;
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --surface2: #1e1e1e;
+            --border: #252525;
+            --text: #e8e8e8;
+            --muted: #555;
+            --mono: 'Share Tech Mono', monospace;
+            --sans: 'Barlow', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image: radial-gradient(ellipse at 10% 0%, rgba(255,107,0,0.05) 0%, transparent 50%);
+        }
+
+        /* ===== TOP NAV ===== */
+        .topnav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(10,10,10,0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .nav-brand h1 { font-weight: 900; font-size: 1.3rem; }
+        .nav-brand h1 span { color: var(--orange); }
+        .nav-brand h1 span.purple { color: #b55cff; }
+        .nav-brand p { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 3px; margin-top: 2px; }
+        .nav-controls { display: flex; gap: 12px; align-items: center; }
+
+        .period-btn {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .period-btn.active { border-color: var(--orange); color: var(--orange); }
+        .period-btn:hover:not(.active) { border-color: #444; color: var(--text); }
+
+        .upload-btn {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            padding: 8px 18px;
+            background: var(--orange);
+            border: none;
+            color: #000;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: background 0.15s;
+        }
+        .upload-btn:hover { background: #ff8533; }
+        .clear-btn { background: transparent; border: 1px solid var(--red); color: var(--red); }
+        .clear-btn:hover { background: rgba(255,68,68,0.1); }
+
+        /* ===== MAIN ===== */
+        main { padding: 32px 40px; max-width: 1400px; margin: 0 auto; }
+
+        /* ===== SUMMARY CARDS ===== */
+        .summary-strip {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 16px;
+            border-top: 3px solid var(--orange);
+        }
+        .stat-card.green { border-top-color: var(--green); }
+        .stat-card.blue { border-top-color: var(--blue); }
+        .stat-card.red { border-top-color: var(--red); }
+        .stat-card.yellow { border-top-color: var(--yellow); }
+        .stat-label { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
+        .stat-value { font-family: var(--mono); font-size: 1.8rem; color: var(--text); line-height: 1; }
+        .stat-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+        /* ===== CHARTS GRID ===== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-full { grid-column: 1 / -1; }
+
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+        }
+        .chart-card h3 {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+        .chart-wrap { position: relative; height: 220px; }
+        .chart-wrap.tall { height: 280px; }
+
+        /* ===== SESSION TABLE ===== */
+        .table-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .table-card h3 {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            color: var(--muted);
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 12px 12px;
+            font-size: 0.88rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-family: var(--mono);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,107,0,0.04); }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .pill-1 { background: rgba(0,255,136,0.15); color: var(--green); }
+        .pill-2 { background: rgba(0,255,136,0.1); color: #88ffcc; }
+        .pill-3 { background: rgba(255,214,0,0.15); color: var(--yellow); }
+        .pill-4 { background: rgba(255,100,0,0.15); color: #ff9944; }
+        .pill-5 { background: rgba(255,68,68,0.15); color: var(--red); }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+        }
+        .empty-state h2 { font-size: 1.5rem; color: var(--muted); margin-bottom: 12px; }
+        .empty-state p { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+        .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+
+        #json-upload { display: none; }
+    </style>
+</head>
+<body>
+<nav class="topnav">
+    <div class="nav-brand">
+        <h1>KINETI<span>AI</span> <span class="purple">NEURO</span> <span style="color:var(--muted);font-weight:300;font-size:0.9rem">/ Clinician Portal</span></h1>
+        <p>NEUROMORPHIC RECOVERY ANALYTICS · SNN EVENT-DRIVEN INTELLIGENCE</p>
+    </div>
+    <div class="nav-controls">
+        <button class="period-btn active" data-period="week">7 DAYS</button>
+        <button class="period-btn" data-period="month">30 DAYS</button>
+        <button class="period-btn" data-period="all">ALL TIME</button>
+        <input type="file" id="json-upload" accept=".json" multiple>
+        <button class="upload-btn" onclick="document.getElementById('json-upload').click()">↑ MERGE JSON FILES</button>
+        <button class="upload-btn clear-btn" onclick="purgeDatabase()">⚠️ CLEAR DATA</button>
+    </div>
+</nav>
+
+<main id="main-content">
+    <div class="empty-state" id="empty-state">
+        <div class="empty-icon">📊</div>
+        <h2>No session data loaded</h2>
+        <p>Import session logs to construct your rolling recovery database ledger.</p>
+        <p style="color:var(--muted);font-size:0.8rem;font-family:var(--mono)">Your database will automatically merge new files without overwriting old sessions.</p>
+        <br>
+        <button class="upload-btn" onclick="loadDemoData()">LOAD PRACTICE DEMO DATA</button>
+    </div>
+    
+    <div id="dashboard-content" style="display:none"></div>
+</main>
+
+<script>
+const STORAGE_KEY = 'rehabMonitor_sessions_v3';
+let allSessions = [];
+let currentPeriod = 'week';
+
+Chart.defaults.color = '#555';
+Chart.defaults.borderColor = '#252525';
+Chart.defaults.font.family = "'Share Tech Mono', monospace";
+Chart.defaults.font.size = 11;
+
+// Load stored metrics on boot up
+window.addEventListener('DOMContentLoaded', () => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+        allSessions = JSON.parse(savedData);
+        renderDashboard();
+    }
+});
+
+// ===== MULTI-SESSION NON-DESTRUCTIVE PROCESSING PIPELINE =====
+document.getElementById('json-upload').addEventListener('change', async (e) => {
+    const files = e.target.files;
+    if (!files.length) return;
+
+    let sessionMap = {};
+    allSessions.forEach(s => { 
+        // Use unique sessionID timestamp key, fallback to date for older logs
+        const key = s.sessionID || s.date;
+        sessionMap[key] = s; 
+    });
+
+    for (let i = 0; i < files.length; i++) {
+        const fileContent = await readFileAsText(files[i]);
+        try {
+            const incomingData = JSON.parse(fileContent);
+            const dataArray = Array.isArray(incomingData) ? incomingData : [incomingData];
+            
+            dataArray.forEach(record => {
+                const key = record.sessionID || record.date;
+                if (key) {
+                    sessionMap[key] = record; // Merges unique timelines cleanly
+                }
+            });
+        } catch (err) {
+            console.error("Skipped malformed file segment block.", err);
+        }
+    }
+
+    // Sort database elements chronologically via microsecond timestamp keys
+    allSessions = Object.values(sessionMap).sort((a, b) => {
+        const timeA = a.sessionID || new Date(a.date).getTime();
+        const timeB = b.sessionID || new Date(b.date).getTime();
+        return timeA - timeB;
+    });
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allSessions));
+    alert(`Database successfully compiled! Total individual exercises logged: ${allSessions.length}`);
+    renderDashboard();
+});
+
+function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = evt => resolve(evt.target.result);
+        reader.onerror = err => reject(err);
+        reader.readAsText(file);
+    });
+}
+
+function purgeDatabase() {
+    if (confirm("Are you certain you want to delete all historical logs from this browser's memory cache?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        allSessions = [];
+        destroyCharts();
+        document.getElementById('dashboard-content').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'block';
+    }
+}
+
+// Generates time-stamped chronological sequences across identical days (e.g., Morning vs Night runs)
+function loadDemoData() {
+    const start = new Date();
+    start.setDate(start.getDate() - 14); // Generate past 2 weeks
+    allSessions = [];
+
+    for (let i = 0; i < 14; i++) {
+        const currentDay = new Date(start);
+        currentDay.setDate(currentDay.getDate() + i);
+        const dateStr = currentDay.toISOString().split('T')[0];
+        const dayStr = currentDay.toLocaleDateString('en-US', { weekday: 'long' });
+        const prog = i / 13;
+
+        // Morning Session Entry
+        const morningTime = new Date(currentDay.setHours(9, 30, 0, 0));
+        allSessions.push({
+            sessionID: morningTime.getTime(),
+            date: dateStr,
+            time: "09:30",
+            day: dayStr,
+            repsCompleted: Math.round(10 + prog * 8 + (Math.random() - 0.5) * 3),
+            painLevel: Math.max(1, Math.round(4 - prog * 2)),
+            swellingLevel: Math.max(1, Math.round(3 - prog * 1.5)),
+            avgKneeExtension95th: Math.round(170 + prog * 6 + (Math.random() - 0.5) * 2),
+            avgKneeFlexion5th: Math.round(118 - prog * 30 + (Math.random() - 0.5) * 6),
+            fatigueLevel: Math.max(1, Math.round(3 - prog * 1.5))
+        });
+
+        // Evening Session Entry (Same Date String, Unique Timestamp and Metrics Profile)
+        const eveningTime = new Date(currentDay.setHours(17, 45, 0, 0));
+        allSessions.push({
+            sessionID: eveningTime.getTime(),
+            date: dateStr,
+            time: "17:45",
+            day: dayStr,
+            repsCompleted: Math.round(12 + prog * 10 + (Math.random() - 0.5) * 3),
+            painLevel: Math.max(1, Math.round(3.5 - prog * 2)),
+            swellingLevel: Math.max(1, Math.round(4 - prog * 2)),
+            avgKneeExtension95th: Math.round(171 + prog * 7 + (Math.random() - 0.5) * 2),
+            avgKneeFlexion5th: Math.round(112 - prog * 34 + (Math.random() - 0.5) * 6),
+            fatigueLevel: Math.max(1, Math.round(4 - prog * 2))
+        });
+    }
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allSessions));
+    renderDashboard();
+}
+
+// ===== PERIOD FILTER =====
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentPeriod = btn.dataset.period;
+        renderDashboard();
+    });
+});
+
+function getFilteredSessions() {
+    if (!allSessions.length) return [];
+    const now = new Date();
+    const cutoff = new Date();
+    if (currentPeriod === 'week') cutoff.setDate(now.getDate() - 7);
+    else if (currentPeriod === 'month') cutoff.setDate(now.getDate() - 30);
+    else return allSessions;
+    return allSessions.filter(s => new Date(s.date) >= cutoff);
+}
+
+// ===== RENDER DASHBOARD GRAPHICAL WORKSPACE =====
+let charts = {};
+function destroyCharts() {
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
+}
+
+function renderDashboard() {
+    document.getElementById('empty-state').style.display = 'none';
+    const content = document.getElementById('dashboard-content');
+    content.style.display = 'block';
+    destroyCharts();
+
+    const sessions = getFilteredSessions();
+    if (!sessions.length) {
+        content.innerHTML = `<p style="text-align:center;color:var(--muted);padding:60px;font-family:var(--mono)">No sessions logged inside this targeted timeline filter.</p>`;
+        return;
+    }
+
+    const avgOf = key => sessions.reduce((s,x) => s + (x[key]||0), 0) / sessions.length;
+    const latestExt = sessions[sessions.length-1].avgKneeExtension95th;
+    const latestFlex = sessions[sessions.length-1].avgKneeFlexion5th;
+    const totalReps = sessions.reduce((s,x) => s + (x.repsCompleted||0), 0);
+    const totalSNNReps = sessions.reduce((s,x) => s + (x.snnRepsCompleted||0), 0);
+    const totalSpikes = sessions.reduce((s,x) => s + (x.totalSpikesFired||0), 0);
+    
+    const trend = sessions.length >= 2
+        ? (sessions[0].avgKneeFlexion5th - sessions[sessions.length-1].avgKneeFlexion5th).toFixed(0)
+        : '—';
+
+    content.innerHTML = `
+    <div class="summary-strip">
+        <div class="stat-card">
+            <div class="stat-label">TOTAL SESSIONS</div>
+            <div class="stat-value">${sessions.length}</div>
+            <div class="stat-sub">distinct entries</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-label">TOTAL VOLUME REPS</div>
+            <div class="stat-value">${totalReps}</div>
+            <div class="stat-sub">accumulated reps</div>
+        </div>
+        <div class="stat-card" style="border-top-color:#b55cff;">
+            <div class="stat-label">SNN NEURO REPS</div>
+            <div class="stat-value" style="color:#b55cff;">${totalSNNReps}</div>
+            <div class="stat-sub">LIF-verified reps</div>
+        </div>
+        <div class="stat-card" style="border-top-color:#00cfff;">
+            <div class="stat-label">TOTAL SPIKES FIRED</div>
+            <div class="stat-value" style="color:#00cfff;">${totalSpikes}</div>
+            <div class="stat-sub">LIF neuron events</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-label">LATEST BEND (5%)</div>
+            <div class="stat-value">${latestFlex !== null && latestFlex !== undefined ? latestFlex+'°' : '—'}</div>
+            <div class="stat-sub">flexion depth</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-label">AVG SEVERITY PAIN</div>
+            <div class="stat-value">${avgOf('painLevel').toFixed(1)}</div>
+            <div class="stat-sub">out of 5 scaling</div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="chart-card chart-full">
+            <h3>KNEE RANGE OF MOTION — FLEXION (5%ILE LOWER IS BETTER) vs EXTENSION (95%ILE HIGHER IS BETTER)</h3>
+            <div class="chart-wrap tall"><canvas id="chart-rom"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>REPETITIONS ACCOMPLISHED PER WORKOUT RUN</h3>
+            <div class="chart-wrap"><canvas id="chart-reps"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>CLINICAL SYMPTOMS PROGRESSION MAPPING</h3>
+            <div class="chart-wrap"><canvas id="chart-pain"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>POST-EXERCISE BIOLOGICAL FATIGUE SHIFTS</h3>
+            <div class="chart-wrap"><canvas id="chart-fatigue"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>CUMULATIVE PERFORMANCE COMPLIANCE BIOMARKER VECTOR</h3>
+            <div id="radar-section" class="chart-wrap"><canvas id="chart-radar"></canvas></div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <h3>ACTIVE TIME SERIES HEALTH LEDGER ARRAY</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>DATE EXECUTED</th>
+                    <th>EXECUTION TIME</th>
+                    <th>REPS DELIVERED</th>
+                    <th>SNN REPS ⚡</th>
+                    <th>SPIKES FIRED</th>
+                    <th>AVG EXTENSION (95%ILE)</th>
+                    <th>AVG FLEXION (5%ILE)</th>
+                    <th>PAIN INDEX</th>
+                    <th>SWELLING INDEX</th>
+                    <th>FATIGUE VALUE</th>
+                </tr>
+            </thead>
+            <tbody id="session-table-body"></tbody>
+        </table>
+    </div>`;
+
+    // Map labels with time context directly into chart tracks (e.g., "05-31 @ 09:30")
+    const chartLabels = sessions.map(s => {
+        const timeLabel = s.time ? ` @ ${s.time}` : '';
+        return `${s.date.slice(5)}${timeLabel}`;
+    });
+    
+    const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255,255,255,0.04)' } }, y: { grid: { color: 'rgba(255,255,255,0.04)' } } } };
+
+    charts['rom'] = new Chart(document.getElementById('chart-rom'), {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [
+                { label: 'Avg Flexion (5%ile) [Bend]', data: sessions.map(s => s.avgKneeFlexion5th), borderColor: '#4488FF', backgroundColor: 'rgba(68,136,255,0.08)', tension: 0.4, fill: true, pointRadius: 4 },
+                { label: 'Avg Extension (95%ile) [Straight]', data: sessions.map(s => s.avgKneeExtension95th), borderColor: '#FF6B00', backgroundColor: 'rgba(255,107,0,0.08)', tension: 0.4, fill: true, pointRadius: 4 }
+            ]
+        },
+        options: { ...opt, plugins: { legend: { display: true, labels: { color: '#888', boxWidth: 12 } } } }
+    });
+
+    charts['reps'] = new Chart(document.getElementById('chart-reps'), {
+        type: 'bar',
+        data: {
+            labels: chartLabels,
+            datasets: [{ data: sessions.map(s => s.repsCompleted), backgroundColor: 'rgba(0,255,136,0.25)', borderColor: '#00FF88', borderWidth: 1, borderRadius: 4 }]
+        },
+        options: opt
+    });
+
+    charts['pain'] = new Chart(document.getElementById('chart-pain'), {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [
+                { label: 'Pain Level', data: sessions.map(s => s.painLevel), borderColor: '#FF4444', tension: 0.4, pointRadius: 3 },
+                { label: 'Swelling Level', data: sessions.map(s => s.swellingLevel), borderColor: '#FFD600', tension: 0.4, pointRadius: 3 }
+            ]
+        },
+        options: { ...opt, plugins: { legend: { display: true, labels: { color: '#888', boxWidth: 10 } } }, scales: { ...opt.scales, y: { ...opt.scales.y, min: 1, max: 5 } } }
+    });
+
+    charts['fatigue'] = new Chart(document.getElementById('chart-fatigue'), {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [{ data: sessions.map(s => s.fatigueLevel), borderColor: '#b55cff', backgroundColor: 'rgba(181,92,255,0.1)', tension: 0.4, fill: true, pointRadius: 3 }]
+        },
+        options: { ...opt, scales: { ...opt.scales, y: { ...opt.scales.y, min: 1, max: 5 } } }
+    });
+
+    charts['radar'] = new Chart(document.getElementById('chart-radar'), {
+        type: 'radar',
+        data: {
+            labels: ['Low Pain', 'Low Swelling', 'Low Fatigue', 'High Volume Reps', 'Flexion Depth'],
+            datasets: [{
+                label: 'Clinical Balance Summary',
+                data: [
+                    ((5 - avgOf('painLevel')) / 4) * 5,
+                    ((5 - avgOf('swellingLevel')) / 4) * 5,
+                    ((5 - avgOf('fatigueLevel')) / 4) * 5,
+                    Math.min(5, (totalReps / sessions.length) / 4),
+                    Math.min(5, (140 - avgOf('avgKneeFlexion5th')) / 20)
+                ],
+                backgroundColor: 'rgba(255,107,0,0.15)',
+                borderColor: '#FF6B00',
+                pointBackgroundColor: '#FF6B00',
+                pointRadius: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { r: { min: 0, max: 5, grid: { color: 'rgba(255,255,255,0.07)' }, angleLines: { color: 'rgba(255,255,255,0.07)' }, pointLabels: { color: '#888', font: { size: 10 } }, ticks: { display: false } } } }
+    });
+
+    const tbody = document.getElementById('session-table-body');
+    const pillClass = v => `pill pill-${Math.min(5,Math.max(1,Math.round(v)))}`;
+    [...sessions].reverse().forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${s.date} <span style="color:#555;font-size:0.7rem">(${s.day ? s.day.substring(0,3) : 'Day'})</span></td>
+            <td style="color:var(--orange); font-weight: bold;">${s.time ? s.time : '—'}</td>
+            <td>${s.repsCompleted}</td>
+            <td style="color:#b55cff;font-weight:bold;">${s.snnRepsCompleted ?? '—'}</td>
+            <td style="color:#00cfff;">${s.totalSpikesFired ?? '—'}</td>
+            <td>${s.avgKneeExtension95th ?? '—'}°</td>
+            <td>${s.avgKneeFlexion5th ?? '—'}°</td>
+            <td><span class="${pillClass(s.painLevel)}">${s.painLevel}/5</span></td>
+            <td><span class="${pillClass(s.swellingLevel)}">${s.swellingLevel}/5</span></td>
+            <td><span class="${pillClass(s.fatigueLevel)}">${s.fatigueLevel}/5</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+</script>
+</body>
+</html>
